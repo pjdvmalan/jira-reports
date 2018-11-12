@@ -1,0 +1,14 @@
+# Local temp files for Vim or Mac OS X.
+*.swp
+.DS_Store
+
+.vscode/
+
+# Python compiled binaries.
+__pycache__/
+
+venv
+
+configlocal.py
+
+var/*.csv

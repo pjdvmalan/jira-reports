@@ -1,0 +1,7 @@
+ipython
+# https://pypi.org/project/jira/#description
+jira
+# https://dateutil.readthedocs.io/en/stable/
+python-dateutil
+# https://pypi.org/project/pytz/
+pytz
