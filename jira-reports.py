@@ -1,4 +1,6 @@
-#!python3
+#!/usr/bin/env python3
+
+# Please see: https://developer.atlassian.com/cloud/jira/platform/rest/v3/#api-api-3-issue-issueIdOrKey-get
 
 from jira import JIRA
 import dateutil.parser
@@ -16,8 +18,13 @@ def fetch_jira_tasks():
     jira_fields = jira.fields()
     field_map = {field['name']:field['id'] for field in jira_fields}
 
+    # Print all fields for this Jira project.
+    # print (field_map)
+
+    # issues = jira.search_issues(jql_str='issue = CTCRM-52', maxResults=1,expand=["changelog", "transitions", "versionedRepresentations"])
+    issues = jira.search_issues(jql_str='project in (PTECH, CTMD, CTFIND, CTCRM, CTED) ORDER BY Rank ASC', maxResults=10000,expand=["changelog", "transitions", "versionedRepresentations"])
     # issues = jira.search_issues(jql_str='project = PTECH AND issue = PTECH-103', maxResults=1,expand=["changelog","transitions"])
-    issues = jira.search_issues(jql_str='project = PTECH', maxResults=20000000,expand=["changelog","transitions"])
+    # issues = jira.search_issues(jql_str='project = PTECH', maxResults=2,expand=["changelog","transitions"])
 
     # Buils a dictionary of statuses. We need to do this by cycling through all 
     # issues to ensure that we have a template to use during processing.
@@ -52,7 +59,8 @@ def fetch_jira_tasks():
             status_changed_cnt = 0,
 
             assigned_to=issue.fields.assignee.name if issue.fields.assignee else '',
-            story_points=story_points if story_points else 0
+            story_points=story_points if story_points else 0,
+            developer = ''
         )
 
         # Add statuses to the current dictionary.
@@ -65,6 +73,7 @@ def fetch_jira_tasks():
         if changelog.histories:
             for history in changelog.histories:
                 for item in history.items:
+                    # print (item.field)
                     if item.field == 'status':
                         row['status_changed_cnt'] += 1
                         # Calculate days.
@@ -78,6 +87,12 @@ def fetch_jira_tasks():
 
                         row['status_changed_on']=dateutil.parser.parse(history.created).strftime("%Y-%m-%d %H:%M:%S")
                         row['status_changed_week_of_year']=int(dateutil.parser.parse(history.created).strftime("%W"))
+
+                    # Check if it is a developer.
+                    if item.field == 'assignee':
+                        if item.fromString in config.DEVELOPERS:
+                            row['developer'] = item.fromString
+
 
         else:
             # No history yet, so take the date created.
