@@ -2,22 +2,26 @@
 Initliazation file for library module.
 """
 
-# import datetime
-from datetime import datetime, timezone
-import businesstime
+import datetime
+import businesstimedelta
 import csv
 
 def business_hours(start_date, end_date=None):
     if not end_date:
-        end_date = datetime.now()
+        end_date = datetime.datetime.now()
 
     start_d = start_date.replace(tzinfo=None)
     end_d = end_date.replace(tzinfo=None)
 
-    bt = businesstime.BusinessTime()
-    hours = bt.businesstime_hours(start_d, end_d).seconds/60/60
+    workday = businesstimedelta.WorkDayRule(
+        start_time=datetime.time(8),
+        end_time=datetime.time(18),
+        working_days=[0, 1, 2, 3, 4])
 
-    return hours
+    businesshrs = businesstimedelta.Rules([workday])
+    bdiff = businesshrs.difference(start_d, end_d)
+
+    return bdiff.hours
 
 
 def sprint_str_to_dict(f):

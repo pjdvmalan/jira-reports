@@ -9,4 +9,10 @@ python-dateutil
 pytz
 
 # https://pypi.org/project/businesstime/
-businesstime
+# businesstime
+
+# https://pypi.org/project/BusinessHours/
+# businesshours
+
+# https://pypi.org/project/businesstimedelta/
+businesstimedelta

@@ -20,10 +20,7 @@ def fetch_jira_tasks(maxResults, startAt):
     # Print all fields for this Jira project.
     # print (field_map)
 
-    # issues = jira.search_issues(jql_str='project in (PTECH, CTMD, CTFIND, CTCRM, CTED) ORDER BY Rank ASC', maxResults=maxResults, startAt=startAt, expand=["changelog", "transitions", "versionedRepresentations"])
-    issues = jira.search_issues(jql_str='issue = CTED-170', maxResults=1,expand=["changelog", "transitions", "versionedRepresentations"])
-    # issues = jira.search_issues(jql_str='project = PTECH AND issue = PTECH-103', maxResults=1,expand=["changelog","transitions"])
-    # issues = jira.search_issues(jql_str='project = PTECH', maxResults=2,expand=["changelog","transitions"])
+    issues = jira.search_issues(jql_str=config.JQL, maxResults=maxResults, startAt=startAt, expand=["changelog", "transitions", "versionedRepresentations"])
 
     # Buils a dictionary of statuses. We need to do this by cycling through all 
     # issues to ensure that we have a template to use during processing.
@@ -43,6 +40,7 @@ def fetch_jira_tasks(maxResults, startAt):
 
     for issue in issues:
         story_points = getattr(issue.fields, field_map['Story Points'])
+
         row = dict(
             id=issue.id,
             key=issue.key,
@@ -52,12 +50,12 @@ def fetch_jira_tasks(maxResults, startAt):
             url="{0}/browse/{1}".format(config.OPTIONS['server'], issue.key),
 
             created_on=dateutil.parser.parse(issue.fields.created).strftime("%Y-%m-%d %H:%M:%S"),
-            created_week_of_year=dateutil.parser.parse(issue.fields.created).strftime("%W"),
+            created_week_of_year=dateutil.parser.parse(issue.fields.created).isocalendar()[1],
             created_by=issue.fields.creator.name,
 
             current_status=issue.fields.status.name,
             status_changed_on=dateutil.parser.parse(issue.fields.created).strftime("%Y-%m-%d %H:%M:%S"),
-            status_changed_week_of_year=int(dateutil.parser.parse(issue.fields.created).strftime("%W")),
+            status_changed_week_of_year=dateutil.parser.parse(issue.fields.created).isocalendar()[1],
             status_changed_cnt = 0,
 
             assigned_to=issue.fields.assignee.name if issue.fields.assignee else '',
@@ -68,7 +66,11 @@ def fetch_jira_tasks(maxResults, startAt):
             sprint_state = '',
             sprint_name = '',
             sprint_start_date = '',
-            sprint_end_date = ''
+            sprint_end_date = '',
+            epic_link=getattr(issue.fields, field_map['Epic Link'], ''),
+            kpi_type = '',
+            project_name = issue.fields.project.name,
+            project_key = issue.fields.project.key
         )
 
         sprint = lib.sprint_str_to_dict(getattr(issue.fields, field_map['Sprint']))
@@ -81,6 +83,15 @@ def fetch_jira_tasks(maxResults, startAt):
         # Add statuses to the current dictionary.
         row.update(statuses)
         row.update(statuses_week_of_year)
+
+        # What type of KPI is this?
+        if issue.fields.issuetype.name == 'Bug':
+            row['kpi_type'] = 'Maintenance'
+        elif issue.fields.issuetype.name in ['Enhancement', 'Story', 'Task', 'New Feature']:
+            if row['epic_link'] == '':
+                row['kpi_type'] = 'Enhancement'
+            else:
+                row['kpi_type'] = 'Implementation'
 
         start_date = None
 
@@ -98,13 +109,14 @@ def fetch_jira_tasks(maxResults, startAt):
                         
                         end_date = dateutil.parser.parse(history.created)
 
-                        row[item.fromString] = row[item.fromString] + lib.business_hours(start_date, end_date)
-                        row["{0}_WOY".format(item.fromString)] = int(dateutil.parser.parse(history.created).strftime("%W"))
+                        row[item.toString] = row[item.toString] + lib.business_hours(start_date, end_date)
+                        woy = dateutil.parser.parse(history.created).isocalendar()[1]
+                        row["{0}_WOY".format(item.toString)] = woy
 
                         start_date = end_date
 
                         row['status_changed_on'] = dateutil.parser.parse(history.created).strftime("%Y-%m-%d %H:%M:%S")
-                        row['status_changed_week_of_year'] = int(dateutil.parser.parse(history.created).strftime("%W"))
+                        row['status_changed_week_of_year'] = woy
 
                     # Check if it is a developer.
                     if item.field == 'assignee':
@@ -116,8 +128,11 @@ def fetch_jira_tasks(maxResults, startAt):
 
         # Calculate hours for status that has not changed yet.
         if row[issue.fields.status.name] == 0:
-            row[issue.fields.status.name] = lib.business_hours(dateutil.parser.parse(issue.fields.created))
-            row["{0}_WOY".format(issue.fields.status.name)] = int(dateutil.parser.parse(issue.fields.created).strftime("%W"))
+            if not start_date:
+                start_date = dateutil.parser.parse(issue.fields.created)
+            row[issue.fields.status.name] = lib.business_hours(start_date)
+            # row["{0}_WOY".format(issue.fields.status.name)] = int(start_date.strftime("%W"))
+            row["{0}_WOY".format(issue.fields.status.name)] = start_date.isocalendar()[1]
 
         # If there is no history for assignee change, we need to get it from the default.
         if issue.fields.assignee:

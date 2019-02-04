@@ -5,3 +5,11 @@ OPTIONS = {
 
 # Authentication credentials.
 AUTH = ('username', 'password')
+
+DEVELOPERS = [
+]
+
+BSAS = [
+]
+
+JQL = ''
