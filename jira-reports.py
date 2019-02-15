@@ -109,9 +109,9 @@ def fetch_jira_tasks(maxResults, startAt):
                         
                         end_date = dateutil.parser.parse(history.created)
 
-                        row[item.toString] = row[item.toString] + lib.business_hours(start_date, end_date)
+                        row[item.fromString] = row[item.fromString] + lib.business_hours(start_date, end_date)
                         woy = dateutil.parser.parse(history.created).isocalendar()[1]
-                        row["{0}_WOY".format(item.toString)] = woy
+                        row["{0}_WOY".format(item.fromString)] = woy
 
                         start_date = end_date
 
@@ -131,7 +131,6 @@ def fetch_jira_tasks(maxResults, startAt):
             if not start_date:
                 start_date = dateutil.parser.parse(issue.fields.created)
             row[issue.fields.status.name] = lib.business_hours(start_date)
-            # row["{0}_WOY".format(issue.fields.status.name)] = int(start_date.strftime("%W"))
             row["{0}_WOY".format(issue.fields.status.name)] = start_date.isocalendar()[1]
 
         # If there is no history for assignee change, we need to get it from the default.
