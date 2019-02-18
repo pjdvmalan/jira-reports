@@ -11,9 +11,10 @@ from etc import config
 import lib
 
 def fetch_jira_tasks(maxResults, startAt):
+
     jira = JIRA(options=config.OPTIONS, basic_auth=config.AUTH)
 
-    # Story points are a computed field and may differ between projects.
+    # Get all the fields so that we can search by name.
     jira_fields = jira.fields()
     field_map = {field['name']:field['id'] for field in jira_fields}
 
@@ -39,7 +40,12 @@ def fetch_jira_tasks(maxResults, startAt):
     rows = []
 
     for issue in issues:
+
+        # print ("Processing: {0}".format(issue.key))
         story_points = getattr(issue.fields, field_map['Story Points'])
+
+        # See if we can find git information
+        git_url, git_lines_added, git_lines_deleted, git_lines_total, git_author = lib.git_details(issue.key)
 
         row = dict(
             id=issue.id,
@@ -60,17 +66,22 @@ def fetch_jira_tasks(maxResults, startAt):
 
             assigned_to=issue.fields.assignee.name if issue.fields.assignee else '',
             story_points=story_points if story_points else 0,
-            bsa = '',
-            developer = '',
-            developer_assigned_date = '',
-            sprint_state = '',
-            sprint_name = '',
-            sprint_start_date = '',
-            sprint_end_date = '',
+            bsa='',
+            developer='',
+            developer_assigned_date='',
+            sprint_state='',
+            sprint_name='',
+            sprint_start_date='',
+            sprint_end_date='',
             epic_link=getattr(issue.fields, field_map['Epic Link'], ''),
-            kpi_type = '',
-            project_name = issue.fields.project.name,
-            project_key = issue.fields.project.key
+            kpi_type='',
+            project_name=issue.fields.project.name,
+            project_key=issue.fields.project.key,
+            git_url=git_url,
+            git_lines_added=git_lines_added,
+            git_lines_deleted=git_lines_deleted,
+            git_lines_total=git_lines_total,
+            git_author=git_author
         )
 
         sprint = lib.sprint_str_to_dict(getattr(issue.fields, field_map['Sprint']))

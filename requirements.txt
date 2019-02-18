@@ -16,3 +16,6 @@ pytz
 
 # https://pypi.org/project/businesstimedelta/
 businesstimedelta
+
+# https://github.com/PyGithub/PyGithub
+PyGithub

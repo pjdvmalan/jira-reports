@@ -5,6 +5,11 @@ Initliazation file for library module.
 import datetime
 import businesstimedelta
 import csv
+from etc import config
+from github import Github
+import time
+
+git = Github(config.GIT_TOKEN)
 
 def business_hours(start_date, end_date=None):
     if not end_date:
@@ -41,9 +46,39 @@ def sprint_str_to_dict(f):
 
     return None
 
-def output_to_csv(rows, output_path, header=None):
 
+def output_to_csv(rows, output_path, header=None):
     with open(output_path, 'w') as f_out:
         writer = csv.DictWriter(f_out, fieldnames=header)
         writer.writeheader()
         writer.writerows(rows)
+
+def git_details(jira_key=None):
+
+    global git
+
+    git_url = ''
+    git_lines_added = 0
+    git_lines_deleted = 0
+    git_lines_total = 0
+    git_author = ''
+
+    if config.RETRIEVE_GIT:
+        rate_limit = git.get_rate_limit()
+        if rate_limit.search.remaining <= 1:
+            print("Git rate limit exceeded - waiting a minute")
+            time.sleep(60)
+
+            git = Github(config.GIT_TOKEN)
+
+            print("Continue ...")
+
+        git_commits = git.search_commits(query=jira_key)
+        for git_commit in git_commits:
+            git_url = git_commit.html_url
+            git_lines_added = git_commit.stats.additions
+            git_lines_deleted = git_commit.stats.deletions
+            git_lines_total = git_commit.stats.total
+            git_author = git_commit.author.name if git_commit.author else ''
+
+    return git_url, git_lines_added, git_lines_deleted, git_lines_total, git_author
